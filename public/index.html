@@ -152,140 +152,136 @@
 
     <!-- This is an SEO/A11y Change-->
     <script
-      src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.20.0/axios.min.js"
-      integrity="sha512-quHCp3WbBNkwLfYUMd+KwBAgpVukJu5MncuQaWXgCrfgcxCJAq/fo+oqrRKOj+UKEmyMCG3tb8RB63W+EmrOBg=="
-      crossorigin="anonymous"
-    ></script>
-    <script
-      src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.min.js"
-      integrity="sha512-s+xg36jbIujB2S2VKfpGmlC3T5V2TF3lY48DX7u2r9XzGzgPsa6wTpOQA7J9iffvdeBN0q9tKzRxVxw1JviZPg=="
-      crossorigin="anonymous"
-    ></script>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+  src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.20.0/axios.min.js"
+  integrity="sha512-quHCp3WbBNkwLfYUMd+KwBAgpVukJu5MncuQaWXgCrfgcxCJAq/fo+oqrRKOj+UKEmyMCG3tb8RB63W+EmrOBg=="
+  crossorigin="anonymous"
+></script>
+<script
+  src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.min.js"
+  integrity="sha512-s+xg36jbIujB2S2VKfpGmlC3T5V2TF3lY48DX7u2r9XzGzgPsa6wTpOQA7J9iffvdeBN0q9tKzRxVxw1JviZPg=="
+  crossorigin="anonymous"
+></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
 
-    <script>
-      function makeColors(n) {
-        const base = [
-          "#ffcd56",
-          "#ff6384",
-          "#36a2eb",
-          "#fd6b19",
-          "#8dd3c7",
-          "#80b1d3",
-          "#b3de69",
-          "#fccde5",
-          "#bc80bd",
-          "#ccebc5",
-        ];
-        return Array.from({ length: n }, (_, i) => base[i % base.length]);
-      }
+<script>
+  function makeColors(n) {
+    const base = [
+      "#ffcd56","#ff6384","#36a2eb","#fd6b19","#8dd3c7",
+      "#80b1d3","#b3de69","#fccde5","#bc80bd","#ccebc5",
+    ];
+    return Array.from({ length: n }, (_, i) => base[i % base.length]);
+  }
 
-      /* ✅ define dataSource BEFORE createChart() */
-      var dataSource = {
-        datasets: [
-          {
-            data: [],
-            backgroundColor: [],
-            borderColor: "#ffffff",
-            borderWidth: 2,
-          },
-        ],
-        labels: [],
-      };
+  /* ✅ Dataset used by Chart.js */
+  var dataSource = {
+    datasets: [
+      {
+        data: [],
+        backgroundColor: [],
+        borderColor: "#ffffff",
+        borderWidth: 2,
+      },
+    ],
+    labels: [],
+  };
 
-      /* Chart.js */
-      var chart;
-      function createChart() {
-        var ctx = document.getElementById("myChart").getContext("2d");
-        if (chart) chart.destroy();
-        chart = new Chart(ctx, {
-          type: "pie",
-          data: dataSource,
-          options: {
-            responsive: true,
-            maintainAspectRatio: false, // use wrapper height
-            legend: { position: "bottom" },
-            layout: { padding: { top: 8, right: 8, bottom: 8, left: 8 } },
-          },
-        });
-      }
+  /* Chart.js pie (kept exactly the same visuals) */
+  var chart;
+  function createChart() {
+    var ctx = document.getElementById("myChart").getContext("2d");
+    if (chart) chart.destroy();
+    chart = new Chart(ctx, {
+      type: "pie",
+      data: dataSource,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        legend: { position: "bottom" },
+        layout: { padding: { top: 8, right: 8, bottom: 8, left: 8 } },
+      },
+    });
+  }
 
-      /* D3 donut — measure the WRAPPER, not the SVG */
-      function renderD3Donut(items) {
-        const svg = d3.select("#d3-donut");
-        const wrap = svg.node().parentElement; // .chart-wrap
-        const side = Math.min(wrap.clientWidth, wrap.clientHeight) || 420;
-        const radius = side / 2;
+  /* D3 donut — unchanged layout, now reads {title, value, color} */
+  function renderD3Donut(items) {
+    const svg = d3.select("#d3-donut");
+    const wrap = svg.node().parentElement; // .chart-wrap
+    const side = Math.min(wrap.clientWidth, wrap.clientHeight) || 420;
+    const radius = side / 2;
 
-        svg.selectAll("*").remove();
-        svg
-          .attr("viewBox", `0 0 ${side} ${side}`)
-          .attr("preserveAspectRatio", "xMidYMid meet");
+    svg.selectAll("*").remove();
+    svg.attr("viewBox", `0 0 ${side} ${side}`)
+       .attr("preserveAspectRatio", "xMidYMid meet");
 
-        const g = svg
-          .append("g")
-          .attr("transform", `translate(${side / 2},${side / 2})`);
+    const g = svg.append("g")
+                 .attr("transform", `translate(${side / 2},${side / 2})`);
 
-        const color = d3
-          .scaleOrdinal()
-          .domain(items.map((d) => d.title))
-          .range(makeColors(items.length));
+    // Prefer DB colors; fall back to a generated palette if missing
+    const palette = items.map(d => d.color || null);
+    const fallback = makeColors(items.length);
+    const colorScale = d3.scaleOrdinal()
+                         .domain(items.map(d => d.title))
+                         .range(palette.map((c, i) => c || fallback[i]));
 
-        const pie = d3
-          .pie()
-          .sort(null)
-          .value((d) => d.budget);
-        const arc = d3
-          .arc()
-          .innerRadius(radius * 0.55)
-          .outerRadius(radius * 0.95);
+    const pie = d3.pie().sort(null).value(d => d.value);
+    const arc = d3.arc().innerRadius(radius * 0.55).outerRadius(radius * 0.95);
 
-        g.selectAll("path")
-          .data(pie(items))
-          .enter()
-          .append("path")
-          .attr("fill", (d) => color(d.data.title))
-          .attr("d", arc)
-          .append("title")
-          .text((d) => `${d.data.title}: ${d.data.budget}`);
+    g.selectAll("path")
+      .data(pie(items))
+      .enter()
+      .append("path")
+      .attr("fill", d => d.data.color || colorScale(d.data.title))
+      .attr("d", arc)
+      .append("title")
+      .text(d => `${d.data.title}: ${d.data.value}`);
 
-        const legend = d3.select("#d3-legend");
-        legend
-          .selectAll("div")
-          .data(items)
-          .join("div")
-          .html(
-            (d) => `
-        <span style="display:inline-block;width:14px;height:10px;background:${color(
-          d.title
-        )};margin-right:6px;vertical-align:middle;"></span>
+    const legend = d3.select("#d3-legend");
+    legend.selectAll("div")
+      .data(items)
+      .join("div")
+      .html(d => `
+        <span style="display:inline-block;width:14px;height:10px;
+                     background:${d.color || colorScale(d.title)};
+                     margin-right:6px;vertical-align:middle;"></span>
         <span>${d.title}</span>
-      `
-          );
-      }
+      `);
+  }
 
-      /* One fetch → both charts */
-      function getBudget() {
-        axios
-          .get("/budget")
-          .then(function (res) {
-            const items =
-              res.data && res.data.myBudget ? res.data.myBudget : [];
-            console.log("items:", items);
+  /* 🔁 One fetch → drive both charts (now reading MongoDB shape) */
+  function getBudget() {
+    axios.get("/budget", { headers: { "Cache-Control": "no-store" } })
+      .then(function (res) {
+        // Our API returns an array: [{ title, value, color }, ...]
+        // (fallback to old shape if needed)
+        const raw = Array.isArray(res.data)
+          ? res.data
+          : (res.data && res.data.myBudget) ? res.data.myBudget : [];
 
-            dataSource.labels = items.map((x) => x.title);
-            dataSource.datasets[0].data = items.map((x) => x.budget);
-            dataSource.datasets[0].backgroundColor = makeColors(items.length);
+        const items = raw.map(x => ({
+          title: x.title,
+          value: Number(x.value != null ? x.value : x.budget),
+          color: x.color || null
+        }));
 
-            createChart();
-            renderD3Donut(items);
-          })
-          .catch(function (err) {
-            console.error("GET /budget failed:", err);
-          });
-      }
+        console.log("items:", items);
 
-      getBudget();
-    </script>
+        dataSource.labels = items.map(x => x.title);
+        dataSource.datasets[0].data = items.map(x => x.value);
+        dataSource.datasets[0].backgroundColor =
+          items.map(x => x.color).every(Boolean)
+            ? items.map(x => x.color)
+            : makeColors(items.length);
+
+        createChart();
+        renderD3Donut(items);
+      })
+      .catch(function (err) {
+        console.error("GET /budget failed:", err);
+      });
+  }
+
+  getBudget();
+</script>
+
   </body>
 </html>
